@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mainframe Browser</title>
+    <script src="https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.10/dist/uv.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.10/dist/uv.config.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 100%;
+            height: 100vh;
+            border: 2px solid #00ff00;
+            background-color: rgba(0, 0, 0, 0.95);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5), inset 0 0 20px rgba(0, 255, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            position: relative;
+        }
+
+        .header {
+            border-bottom: 2px solid #00ff00;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            text-shadow: 0 0 10px #00ff00;
+            margin-bottom: 10px;
+            animation: flicker 0.15s infinite;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 10px;
+            padding: 15px 20px;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-bottom: 1px solid #00ff00;
+        }
+
+        .search-input {
+            flex: 0 1 500px;
+            padding: 12px 20px;
+            background-color: rgba(0, 255, 0, 0.1);
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            border-radius: 50px;
+        }
+
+        .search-input::placeholder {
+            color: rgba(0, 255, 0, 0.5);
+        }
+
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .search-button {
+            padding: 10px 25px;
+            background-color: rgba(0, 255, 0, 0.1);
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            border-radius: 50px;
+        }
+
+        .search-button:hover {
+            background-color: #00ff00;
+            color: #000000;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .welcome-text {
+            font-size: 1.2em;
+            text-align: center;
+            line-height: 1.8;
+            padding: 20px;
+        }
+
+        .status-bar {
+            border-top: 2px solid #00ff00;
+            padding: 10px 20px;
+            font-size: 0.85em;
+            display: flex;
+            justify-content: space-between;
+            opacity: 0.7;
+        }
+
+        .status-item {
+            flex: 1;
+        }
+
+        @keyframes flicker {
+            0%, 100% {
+                text-shadow: 0 0 10px #00ff00;
+            }
+            50% {
+                text-shadow: 0 0 20px #00ff00, 0 0 30px #00ff00;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrix" class="matrix-bg"></canvas>
+    
+    <div class="container">
+        <div class="header">
+            <h1>>> MAINFRAME BROWSER v1.0</h1>
+            <div class="search-container">
+                <input type="text" class="search-input" id="search-input" placeholder="Search the web...">
+                <button class="search-button" onclick="navigate()">Go</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="welcome-text">
+                <p>>> Welcome to Mainframe Browser</p>
+                <p>>> Enter a URL or search query to begin</p>
+                <p>>> All traffic is encrypted and proxied</p>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">[SYSTEM READY]</div>
+            <div class="status-item" style="text-align: center;" id="main-clock">00:00:00 AM</div>
+            <div class="status-item" style="text-align: right;">[ENCRYPTED PROXY]</div>
+        </div>
+    </div>
+
+    <script>
+        window.__uv$config = {
+            prefix: '/active/go/',
+            bare: '/b/',
+            encodeUrl: window.Ultraviolet?.codec?.xor?.encode,
+            decodeUrl: window.Ultraviolet?.codec?.xor?.decode,
+            handler: '/sw.js',
+            bundle: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.10/dist/uv.bundle.js',
+            config: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.10/dist/uv.config.js',
+            sw: '/sw.js'
+        };
+
+        function navigate() {
+            const input = document.getElementById('search-input').value.trim();
+            if (!input) return;
+
+            navigator.serviceWorker.register('/sw.js', {
+                scope: window.__uv$config.prefix
+            }).then(() => {
+                let url = input;
+                if (!isUrl(url)) {
+                    url = 'https://duckduckgo.com/?q=' + encodeURIComponent(url);
+                } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    url = 'https://' + url;
+                }
+                sessionStorage.setItem('encodedUrl', url);
+                window.location.href = '/search';
+            });
+        }
+
+        function isUrl(val = '') {
+            return /^https?:\/\//i.test(val) || (val.includes('.') && val.slice(0, 1) !== ' ');
+        }
+
+        function initMatrix() {
+            const canvas = document.getElementById('matrix');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+            const drops = [];
+
+            for (let i = 0; i < 30; i++) {
+                drops[i] = {
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    speed: Math.random() * 2 + 0.5
+                };
+            }
+
+            function draw() {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = 'rgba(0, 255, 0, 1)';
+                ctx.font = 'bold 20px Courier New';
+
+                for (let i = 0; i < drops.length; i++) {
+                    const char = chars[Math.floor(Math.random() * chars.length)];
+                    ctx.fillText(char, drops[i].x, drops[i].y);
+
+                    drops[i].y += drops[i].speed;
+
+                    if (drops[i].y > canvas.height) {
+                        drops[i].y = 0;
+                        drops[i].x = Math.random() * canvas.width;
+                    }
+                }
+
+                requestAnimationFrame(draw);
+            }
+
+            draw();
+
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            });
+        }
+
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            const displayHours = String(hours).padStart(2, '0');
+            document.getElementById('main-clock').textContent = `${displayHours}:${minutes}:${seconds} ${ampm}`;
+        }
+
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && document.getElementById('search-input') === document.activeElement) {
+                navigate();
+            }
+        });
+
+        window.addEventListener('load', () => {
+            initMatrix();
+            updateClock();
+            setInterval(updateClock, 1000);
+        });
+    </script>
+</body>
+</html>

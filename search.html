@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Mainframe Browser - Browse</title>
+    <script src="https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.10/dist/uv.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.10/dist/uv.config.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #header {
+            background-color: #000000;
+            border-bottom: 2px solid #00ff00;
+            padding: 10px 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .logo {
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        #search-box {
+            flex: 1;
+            display: flex;
+            gap: 5px;
+        }
+
+        #address-input {
+            flex: 1;
+            padding: 8px 12px;
+            background-color: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            border-radius: 3px;
+        }
+
+        #address-input::placeholder {
+            color: rgba(0, 255, 0, 0.5);
+        }
+
+        #address-input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+        .nav-button {
+            width: 32px;
+            height: 32px;
+            background-color: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            cursor: pointer;
+            font-size: 0.8em;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .nav-button:hover {
+            background-color: #00ff00;
+            color: #000000;
+        }
+
+        .nav-button:active {
+            transform: scale(0.95);
+        }
+
+        #iframe-container {
+            flex: 1;
+            overflow: hidden;
+            border-top: 1px solid #00ff00;
+        }
+
+        #iframeid {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .loading-bar {
+            height: 3px;
+            background-color: #00ff00;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-bar" id="loadingbar"></div>
+    <div id="header">
+        <button class="nav-button" onclick="goHome()" title="Home">⌂</button>
+        <button class="nav-button" onclick="goback()" title="Back">←</button>
+        <button class="nav-button" onclick="goforward()" title="Forward">→</button>
+        <button class="nav-button" onclick="reload()" title="Refresh">↻</button>
+        <div id="search-box">
+            <input type="text" id="address-input" placeholder="Search or enter URL...">
+        </div>
+    </div>
+
+    <div id="iframe-container">
+        <iframe src="" id="iframeid" allowfullscreen></iframe>
+    </div>
+
+    <script>
+        const iframe = document.getElementById('iframeid');
+        const addressInput = document.getElementById('address-input');
+        const loadingBar = document.getElementById('loadingbar');
+
+        window.__uv$config = {
+            prefix: '/active/go/',
+            bare: '/b/',
+            encodeUrl: Ultraviolet.codec.xor.encode,
+            decodeUrl: Ultraviolet.codec.xor.decode,
+            handler: '/sw.js',
+            bundle: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.10/dist/uv.bundle.js',
+            config: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.10/dist/uv.config.js',
+            sw: '/sw.js'
+        };
+
+        function isUrl(val = '') {
+            return /^https?:\/\//i.test(val) || (val.includes('.') && val.slice(0, 1) !== ' ');
+        }
+
+        function loadNewPage(url) {
+            if (!url) return;
+
+            if (!isUrl(url)) {
+                url = 'https://duckduckgo.com/?q=' + encodeURIComponent(url);
+            } else if (!/^https?:\/\//i.test(url)) {
+                url = 'https://' + url;
+            }
+
+            const encoded = Ultraviolet.codec.xor.encode(url);
+            iframe.src = window.__uv$config.prefix + encoded;
+            updateAddressBar(url);
+            showLoadingBar();
+        }
+
+        function updateAddressBar(url) {
+            addressInput.value = url;
+        }
+
+        function showLoadingBar() {
+            loadingBar.style.width = '30%';
+        }
+
+        function hideLoadingBar() {
+            loadingBar.style.width = '100%';
+            setTimeout(() => {
+                loadingBar.style.width = '0';
+            }, 300);
+        }
+
+        function goHome() {
+            window.location.href = '/';
+        }
+
+        function goback() {
+            try {
+                iframe.contentWindow.history.back();
+            } catch (e) {
+                console.error('Failed to go back:', e);
+            }
+        }
+
+        function goforward() {
+            try {
+                iframe.contentWindow.history.forward();
+            } catch (e) {
+                console.error('Failed to go forward:', e);
+            }
+        }
+
+        function reload() {
+            try {
+                iframe.contentWindow.location.reload();
+            } catch (e) {
+                console.error('Failed to reload:', e);
+            }
+        }
+
+        addressInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                loadNewPage(addressInput.value.trim());
+            }
+        });
+
+        iframe.addEventListener('load', () => {
+            hideLoadingBar();
+        });
+
+        window.addEventListener('load', () => {
+            const encodedUrl = sessionStorage.getItem('encodedUrl');
+            if (encodedUrl) {
+                loadNewPage(encodedUrl);
+                sessionStorage.removeItem('encodedUrl');
+            }
+        });
+    </script>
+</body>
+</html>
